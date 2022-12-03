@@ -90,7 +90,7 @@ fun writeAssignFromEmbedded(processingEnvironment: ProcessingEnvironment, buffer
 
 private fun writeCopy4Insert(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""""")
-    bufferedWriter.appendLine("""    public static void copy4insert(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedDtoName} data, ${classModel.qualifiedName} entity) {""")
+    bufferedWriter.appendLine("""    public static void copy4insert(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedName} entity, ${classModel.qualifiedDtoName} data) {""")
     for ((index, propertyModel) in classModel.properties.withIndex()) {
         val isInsertable = propertyModel.isInsertable
         val isManaged = propertyModel.isGeneratedValue || propertyModel.isVersion
@@ -108,7 +108,7 @@ private fun writeCopy4Insert(processingEnvironment: ProcessingEnvironment, buffe
 
 private fun writeCopy4Update(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""""")
-    bufferedWriter.appendLine("""    public static void copy4update(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedDtoName} data, ${classModel.qualifiedName} entity) {""")
+    bufferedWriter.appendLine("""    public static void copy4update(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedName} entity, ${classModel.qualifiedDtoName} data) {""")
     for ((index, propertyModel) in classModel.properties.withIndex()) {
         val isUpdatable = propertyModel.isUpdatable
         val isManaged = propertyModel.isGeneratedValue || propertyModel.isVersion
