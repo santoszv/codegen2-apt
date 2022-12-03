@@ -20,8 +20,8 @@ import javax.lang.model.element.AnnotationMirror
 
 class PropertyModel(
     val propertyName: String,
-    val getterMethod: MethodModel?,
-    val setterMethod: MethodModel?
+    val getterMethod: MethodModel,
+    val setterMethod: MethodModel
 ) {
 
     val capitalizedName: String by lazy {
@@ -34,50 +34,54 @@ class PropertyModel(
     }
 
     val propertyType: TypeModel by lazy {
-        getterMethod?.methodReturnType ?: TypeModel.Unknown
+        getterMethod.methodReturnType
     }
 
     val getterName: String by lazy {
-        getterMethod?.methodName ?: "get${capitalizedName}"
+        getterMethod.methodName
     }
 
     val setterName: String by lazy {
-        setterMethod?.methodName ?: "set${capitalizedName}"
+        setterMethod.methodName
     }
 
     val isId: Boolean by lazy {
-        getterMethod?.isId ?: false
-    }
-
-    val isVersion: Boolean by lazy {
-        getterMethod?.isVersion ?: false
-    }
-
-    val isColumn: Boolean by lazy {
-        getterMethod?.isColumn ?: false
-    }
-
-    val isJoinColumn: Boolean by lazy {
-        getterMethod?.isJoinColumn ?: false
+        getterMethod.isId
     }
 
     val isGeneratedValue: Boolean by lazy {
-        getterMethod?.isGeneratedValue ?: false
+        getterMethod.isGeneratedValue
+    }
+
+    val isVersion: Boolean by lazy {
+        getterMethod.isVersion
+    }
+
+    val isColumn: Boolean by lazy {
+        getterMethod.isColumn
+    }
+
+    val isJoinColumn: Boolean by lazy {
+        getterMethod.isJoinColumn
+    }
+
+    val isEmbedded: Boolean by lazy {
+        getterMethod.isEmbedded
     }
 
     val isNullable: Boolean by lazy {
-        getterMethod?.isNullable ?: false
+        getterMethod.isNullable
     }
 
     val isInsertable: Boolean by lazy {
-        getterMethod?.isInsertable ?: false
+        getterMethod.isInsertable
     }
 
     val isUpdatable: Boolean by lazy {
-        getterMethod?.isUpdatable ?: false
+        getterMethod.isUpdatable
     }
 
     val validations: List<AnnotationMirror> by lazy {
-        getterMethod?.validations ?: emptyList()
+        getterMethod.validations
     }
 }

@@ -36,18 +36,23 @@ class CodegenProcessor : AbstractProcessor() {
         for (annotatedClass in annotatedClasses) {
             val classModel = ClassModel(processingEnv, annotatedClass as TypeElement)
             if (classModel.isEntity && classModel.isTopLevel && classModel.isPublic && !classModel.isAbstract) {
-                val packageName = classModel.packageName
-                val crudQualifiedName = if (packageName.isBlank()) classModel.crudName else "${packageName}.${classModel.crudName}"
-                val dtoQualifiedName = if (packageName.isBlank()) classModel.dtoName else "${packageName}.${classModel.dtoName}"
-                if (!generatedClasses.contains(crudQualifiedName)) {
-                    generatedClasses.add(crudQualifiedName)
-                    processingEnv.filer.createSourceFile(crudQualifiedName, annotatedClass).openWriter().buffered().use { writer ->
-                        writeCRUD(processingEnv, writer, classModel)
+                if (!generatedClasses.contains(classModel.qualifiedCrudName)) {
+                    generatedClasses.add(classModel.qualifiedCrudName)
+                    processingEnv.filer.createSourceFile(classModel.qualifiedCrudName, annotatedClass).openWriter().buffered().use { writer ->
+                        writeCRUD(writer, classModel)
                     }
                 }
-                if (!generatedClasses.contains(dtoQualifiedName)) {
-                    generatedClasses.add(dtoQualifiedName)
-                    processingEnv.filer.createSourceFile(dtoQualifiedName, annotatedClass).openWriter().buffered().use { writer ->
+                if (!generatedClasses.contains(classModel.qualifiedDtoName)) {
+                    generatedClasses.add(classModel.qualifiedDtoName)
+                    processingEnv.filer.createSourceFile(classModel.qualifiedDtoName, annotatedClass).openWriter().buffered().use { writer ->
+                        writeDTO(processingEnv, writer, classModel)
+                    }
+                }
+            }
+            if (classModel.isEmbeddable && classModel.isTopLevel && classModel.isPublic && !classModel.isAbstract) {
+                if (!generatedClasses.contains(classModel.qualifiedDtoName)) {
+                    generatedClasses.add(classModel.qualifiedDtoName)
+                    processingEnv.filer.createSourceFile(classModel.qualifiedDtoName, annotatedClass).openWriter().buffered().use { writer ->
                         writeDTO(processingEnv, writer, classModel)
                     }
                 }

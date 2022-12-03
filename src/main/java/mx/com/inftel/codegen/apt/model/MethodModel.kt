@@ -45,6 +45,12 @@ class MethodModel(
         }
     }
 
+    val generatedValueAnnotation: AnnotationMirror? by lazy {
+        annotations.firstOrNull {
+            (it.annotationType.asElement() as TypeElement).qualifiedName.contentEquals("jakarta.persistence.GeneratedValue")
+        }
+    }
+
     val versionAnnotation: AnnotationMirror? by lazy {
         annotations.firstOrNull {
             (it.annotationType.asElement() as TypeElement).qualifiedName.contentEquals("jakarta.persistence.Version")
@@ -63,14 +69,18 @@ class MethodModel(
         }
     }
 
-    val generatedValueAnnotation: AnnotationMirror? by lazy {
+    val embeddedColumnAnnotation: AnnotationMirror? by lazy {
         annotations.firstOrNull {
-            (it.annotationType.asElement() as TypeElement).qualifiedName.contentEquals("jakarta.persistence.GeneratedValue")
+            (it.annotationType.asElement() as TypeElement).qualifiedName.contentEquals("jakarta.persistence.Embedded")
         }
     }
 
     val isId: Boolean by lazy {
         idAnnotation != null
+    }
+
+    val isGeneratedValue: Boolean by lazy {
+        generatedValueAnnotation != null
     }
 
     val isVersion: Boolean by lazy {
@@ -85,8 +95,8 @@ class MethodModel(
         joinColumnAnnotation != null
     }
 
-    val isGeneratedValue: Boolean by lazy {
-        generatedValueAnnotation != null
+    val isEmbedded: Boolean by lazy {
+        embeddedColumnAnnotation != null
     }
 
     val isNullable: Boolean by lazy {

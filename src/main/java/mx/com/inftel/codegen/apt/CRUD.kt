@@ -17,13 +17,9 @@
 package mx.com.inftel.codegen.apt
 
 import mx.com.inftel.codegen.apt.model.ClassModel
-import mx.com.inftel.codegen.apt.model.PropertyModel
-import mx.com.inftel.codegen.apt.model.TypeModel
 import java.io.BufferedWriter
-import javax.annotation.processing.ProcessingEnvironment
-import javax.lang.model.element.TypeElement
 
-fun writeCRUD(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+fun writeCRUD(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("// Origin: ${classModel.qualifiedName}")
     if (classModel.packageName.isNotBlank()) {
         bufferedWriter.appendLine()
@@ -34,11 +30,11 @@ fun writeCRUD(processingEnvironment: ProcessingEnvironment, bufferedWriter: Buff
     bufferedWriter.appendLine()
     bufferedWriter.appendLine("    jakarta.persistence.EntityManager getEntityManager();")
     writeCount(bufferedWriter, classModel)
-    writeList(processingEnvironment, bufferedWriter, classModel)
-    writeFind(processingEnvironment, bufferedWriter, classModel)
-    writeCreate(processingEnvironment, bufferedWriter, classModel)
-    writeUpdate(processingEnvironment, bufferedWriter, classModel)
-    writeDelete(processingEnvironment, bufferedWriter, classModel)
+    writeList(bufferedWriter, classModel)
+    writeFind(bufferedWriter, classModel)
+    writeCreate(bufferedWriter, classModel)
+    writeUpdate(bufferedWriter, classModel)
+    writeDelete(bufferedWriter, classModel)
     writeCountContext(bufferedWriter, classModel)
     writeListContext(bufferedWriter, classModel)
     bufferedWriter.appendLine("}")
@@ -61,7 +57,7 @@ private fun writeCount(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""    }""")
 }
 
-private fun writeList(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeList(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine()
     bufferedWriter.appendLine("""    default java.util.List<${classModel.dtoName}> list${classModel.capitalizedName}(java.util.function.Consumer<ListContext> consumer) {""")
     bufferedWriter.appendLine("""        jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder = this.getEntityManager().getCriteriaBuilder();""")
@@ -88,154 +84,75 @@ private fun writeList(processingEnvironment: ProcessingEnvironment, bufferedWrit
     bufferedWriter.appendLine("""        }""")
     bufferedWriter.appendLine("""        return typedQuery.getResultList().stream().map(entity -> {""")
     bufferedWriter.appendLine("""            ${classModel.dtoName} data = new ${classModel.dtoName}();""")
-    for (propertyModel in classModel.properties) {
-        when {
-            propertyModel.isColumn -> writeAssignFromEntityColum(bufferedWriter, propertyModel)
-            propertyModel.isJoinColumn -> writeAssignFromEntityJoinColum(processingEnvironment, bufferedWriter, propertyModel)
-        }
-    }
+    bufferedWriter.appendLine("""            ${classModel.dtoName}.copy2data(entity, data);""")
     bufferedWriter.appendLine("""            return data;""")
     bufferedWriter.appendLine("""        }).collect(java.util.stream.Collectors.toList());""")
     bufferedWriter.appendLine("""    }""")
 }
 
-fun writeFind(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeFind(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     val idPropertyModel = classModel.idProperty ?: return
     val idPropertyType = idPropertyModel.propertyType.toNonNullable().toCode()
     bufferedWriter.appendLine()
     bufferedWriter.appendLine("""    default ${classModel.dtoName} find${classModel.capitalizedName}(${idPropertyType} id) {""")
-    bufferedWriter.appendLine("""            ${classModel.qualifiedName} entity = this.getEntityManager().find(${classModel.qualifiedName}.class, id);""")
-    bufferedWriter.appendLine("""            if (entity == null) {""")
-    bufferedWriter.appendLine("""                throw new IllegalArgumentException("Entity Not Found");""")
-    bufferedWriter.appendLine("""            }""")
-    bufferedWriter.appendLine("""            ${classModel.dtoName} data = new ${classModel.dtoName}();""")
-    for (propertyModel in classModel.properties) {
-        when {
-            propertyModel.isColumn -> writeAssignFromEntityColum(bufferedWriter, propertyModel)
-            propertyModel.isJoinColumn -> writeAssignFromEntityJoinColum(processingEnvironment, bufferedWriter, propertyModel)
-        }
-    }
-    bufferedWriter.appendLine("""            return data;""")
+    bufferedWriter.appendLine("""        ${classModel.qualifiedName} entity = this.getEntityManager().find(${classModel.qualifiedName}.class, id);""")
+    bufferedWriter.appendLine("""        if (entity == null) {""")
+    bufferedWriter.appendLine("""            throw new IllegalArgumentException("Entity Not Found");""")
+    bufferedWriter.appendLine("""        }""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName} data = new ${classModel.dtoName}();""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName}.copy2data(entity, data);""")
+    bufferedWriter.appendLine("""        return data;""")
     bufferedWriter.appendLine("""    }""")
 }
 
-fun writeCreate(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeCreate(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine()
     bufferedWriter.appendLine("""    default ${classModel.dtoName} create${classModel.capitalizedName}(${classModel.dtoName} data) {""")
-    bufferedWriter.appendLine("""            ${classModel.qualifiedName} entity = new ${classModel.qualifiedName}();""")
-    for ((index, propertyModel) in classModel.properties.withIndex()) {
-        val isInsertable = propertyModel.isInsertable
-        val isManaged = propertyModel.isGeneratedValue || propertyModel.isVersion
-        if (isInsertable && !isManaged) {
-            when {
-                propertyModel.isColumn -> writeAssignFromDataColum(bufferedWriter, propertyModel)
-                propertyModel.isJoinColumn -> writeAssignFromDataJoinColum(processingEnvironment, bufferedWriter, index, propertyModel)
-            }
-        }
-    }
-    bufferedWriter.appendLine("""            this.getEntityManager().persist(entity);""")
-    bufferedWriter.appendLine("""            this.getEntityManager().flush();""")
-    bufferedWriter.appendLine("""            data = new ${classModel.dtoName}();""")
-    for (propertyModel in classModel.properties) {
-        when {
-            propertyModel.isColumn -> writeAssignFromEntityColum(bufferedWriter, propertyModel)
-            propertyModel.isJoinColumn -> writeAssignFromEntityJoinColum(processingEnvironment, bufferedWriter, propertyModel)
-        }
-    }
-    bufferedWriter.appendLine("""            return data;""")
+    bufferedWriter.appendLine("""        ${classModel.qualifiedName} entity = new ${classModel.qualifiedName}();""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName}.copy4insert(this.getEntityManager(), data, entity);""")
+    bufferedWriter.appendLine("""        this.getEntityManager().persist(entity);""")
+    bufferedWriter.appendLine("""        this.getEntityManager().flush();""")
+    bufferedWriter.appendLine("""        data = new ${classModel.dtoName}();""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName}.copy2data(entity, data);""")
+    bufferedWriter.appendLine("""        return data;""")
     bufferedWriter.appendLine("""    }""")
 }
 
-fun writeUpdate(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeUpdate(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     val idPropertyModel = classModel.idProperty ?: return
     val idPropertyType = idPropertyModel.propertyType.toNonNullable().toCode()
     bufferedWriter.appendLine()
     bufferedWriter.appendLine("""    default ${classModel.dtoName} update${classModel.capitalizedName}(${idPropertyType} id, ${classModel.dtoName} data) {""")
-    bufferedWriter.appendLine("""            ${classModel.qualifiedName} entity = this.getEntityManager().find(${classModel.qualifiedName}.class, id);""")
-    bufferedWriter.appendLine("""            if (entity == null) {""")
-    bufferedWriter.appendLine("""                throw new IllegalArgumentException("Entity Not Found");""")
-    bufferedWriter.appendLine("""            }""")
-    for ((index, propertyModel) in classModel.properties.withIndex()) {
-        val isUpdatable = propertyModel.isUpdatable
-        val isManaged = propertyModel.isGeneratedValue || propertyModel.isVersion
-        if (isUpdatable && !isManaged) {
-            when {
-                propertyModel.isColumn -> writeAssignFromDataColum(bufferedWriter, propertyModel)
-                propertyModel.isJoinColumn -> writeAssignFromDataJoinColum(processingEnvironment, bufferedWriter, index, propertyModel)
-            }
-        }
-    }
-    bufferedWriter.appendLine("""            this.getEntityManager().flush();""")
-    bufferedWriter.appendLine("""            data = new ${classModel.dtoName}();""")
-    for (propertyModel in classModel.properties) {
-        when {
-            propertyModel.isColumn -> writeAssignFromEntityColum(bufferedWriter, propertyModel)
-            propertyModel.isJoinColumn -> writeAssignFromEntityJoinColum(processingEnvironment, bufferedWriter, propertyModel)
-        }
-    }
-    bufferedWriter.appendLine("""            return data;""")
+    bufferedWriter.appendLine("""        ${classModel.qualifiedName} entity = this.getEntityManager().find(${classModel.qualifiedName}.class, id);""")
+    bufferedWriter.appendLine("""        if (entity == null) {""")
+    bufferedWriter.appendLine("""            throw new IllegalArgumentException("Entity Not Found");""")
+    bufferedWriter.appendLine("""        }""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName}.copy4update(this.getEntityManager(), data, entity);""")
+    bufferedWriter.appendLine("""        this.getEntityManager().flush();""")
+    bufferedWriter.appendLine("""        data = new ${classModel.dtoName}();""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName}.copy2data(entity, data);""")
+    bufferedWriter.appendLine("""        return data;""")
     bufferedWriter.appendLine("""    }""")
 }
 
-fun writeDelete(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeDelete(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     val idPropertyModel = classModel.idProperty ?: return
     val idPropertyType = idPropertyModel.propertyType.toNonNullable().toCode()
     bufferedWriter.appendLine()
     bufferedWriter.appendLine("""    default ${classModel.dtoName} delete${classModel.capitalizedName}(${idPropertyType} id) {""")
-    bufferedWriter.appendLine("""            ${classModel.qualifiedName} entity = this.getEntityManager().find(${classModel.qualifiedName}.class, id);""")
-    bufferedWriter.appendLine("""            if (entity == null) {""")
-    bufferedWriter.appendLine("""                throw new IllegalArgumentException("Entity Not Found");""")
-    bufferedWriter.appendLine("""            }""")
-    bufferedWriter.appendLine("""            this.getEntityManager().remove(entity);""")
-    bufferedWriter.appendLine("""            this.getEntityManager().flush();""")
-    bufferedWriter.appendLine("""            ${classModel.dtoName} data = new ${classModel.dtoName}();""")
-    for (propertyModel in classModel.properties) {
-        when {
-            propertyModel.isColumn -> writeAssignFromEntityColum(bufferedWriter, propertyModel)
-            propertyModel.isJoinColumn -> writeAssignFromEntityJoinColum(processingEnvironment, bufferedWriter, propertyModel)
-        }
-    }
-    bufferedWriter.appendLine("""            return data;""")
+    bufferedWriter.appendLine("""        ${classModel.qualifiedName} entity = this.getEntityManager().find(${classModel.qualifiedName}.class, id);""")
+    bufferedWriter.appendLine("""        if (entity == null) {""")
+    bufferedWriter.appendLine("""            throw new IllegalArgumentException("Entity Not Found");""")
+    bufferedWriter.appendLine("""        }""")
+    bufferedWriter.appendLine("""        this.getEntityManager().remove(entity);""")
+    bufferedWriter.appendLine("""        this.getEntityManager().flush();""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName} data = new ${classModel.dtoName}();""")
+    bufferedWriter.appendLine("""        ${classModel.dtoName}.copy2data(entity, data);""")
+    bufferedWriter.appendLine("""        return data;""")
     bufferedWriter.appendLine("""    }""")
 }
 
-fun writeAssignFromDataColum(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
-    val getterName = propertyModel.getterName
-    val setterName = propertyModel.setterName
-    bufferedWriter.appendLine("""            entity.${setterName}(data.${getterName}());""")
-}
-
-fun writeAssignFromDataJoinColum(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, index: Int, propertyModel: PropertyModel) {
-    val getterName = propertyModel.getterName
-    val setterName = propertyModel.setterName
-    val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
-    val joinClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    val idPropertyModel = joinClassModel.idProperty ?: return
-    val idPropertyType = if (propertyModel.isNullable) {
-        idPropertyModel.propertyType.toNullable()
-    } else {
-        idPropertyModel.propertyType.toNonNullable()
-    }
-    if (idPropertyType is TypeModel.PrimitiveType) {
-        bufferedWriter.appendLine("""            ${joinClassModel.qualifiedName} relation${index} = this.getEntityManager().find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
-        bufferedWriter.appendLine("""            if (relation${index} == null) {""")
-        bufferedWriter.appendLine("""                throw new IllegalArgumentException("Relation Not Found");""")
-        bufferedWriter.appendLine("""            }""")
-        bufferedWriter.appendLine("""            entity.${setterName}(relation${index});""")
-    } else {
-        bufferedWriter.appendLine("""            if (data.${getterName}Id() != null) {""")
-        bufferedWriter.appendLine("""                ${joinClassModel.qualifiedName} relation${index} = this.getEntityManager().find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
-        bufferedWriter.appendLine("""                if (relation${index} == null) {""")
-        bufferedWriter.appendLine("""                    throw new IllegalArgumentException("Relation Not Found");""")
-        bufferedWriter.appendLine("""                }""")
-        bufferedWriter.appendLine("""                entity.${setterName}(relation${index});""")
-        bufferedWriter.appendLine("""            } else {""")
-        bufferedWriter.appendLine("""                entity.${setterName}(null);""")
-        bufferedWriter.appendLine("""            }""")
-    }
-}
-
-fun writeCountContext(bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeCountContext(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""    final class CountContext {""")
     bufferedWriter.appendLine("""""")
     bufferedWriter.appendLine("""        private final jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder;""")
@@ -265,7 +182,7 @@ fun writeCountContext(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""""")
 }
 
-fun writeListContext(bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeListContext(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""    final class ListContext {""")
     bufferedWriter.appendLine("""""")
     bufferedWriter.appendLine("""        private final jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder;""")
@@ -329,22 +246,4 @@ fun writeListContext(bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""        }""")
     bufferedWriter.appendLine("""""")
     bufferedWriter.appendLine("""    }""")
-}
-
-fun writeAssignFromEntityColum(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
-    val getterName = propertyModel.getterName
-    val setterName = propertyModel.setterName
-    bufferedWriter.appendLine("""            data.${setterName}(entity.${getterName}());""")
-}
-
-fun writeAssignFromEntityJoinColum(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
-    val getterName = propertyModel.getterName
-    val setterName = propertyModel.setterName
-    val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
-    val joinClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    val idPropertyModel = joinClassModel.idProperty ?: return
-    val idPropertyGetterName = idPropertyModel.getterName
-    bufferedWriter.appendLine("""            if (entity.${getterName}() != null) {""")
-    bufferedWriter.appendLine("""                data.${setterName}Id(entity.${getterName}().${idPropertyGetterName}());""")
-    bufferedWriter.appendLine("""            }""")
 }
