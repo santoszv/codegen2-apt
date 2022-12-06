@@ -142,7 +142,7 @@ private fun writeAssignFromDataJoinColum(processingEnvironment: ProcessingEnviro
         idPropertyModel.propertyType.toNonNullable()
     }
     if (idPropertyType is TypeModel.PrimitiveType) {
-        bufferedWriter.appendLine("""        ${joinClassModel.qualifiedName} relation${index} = this.entityManager.find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
+        bufferedWriter.appendLine("""        ${joinClassModel.qualifiedName} relation${index} = entityManager.find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
         bufferedWriter.appendLine("""        if (relation${index} == null) {""")
         bufferedWriter.appendLine("""            throw new IllegalArgumentException("Relation Not Found");""")
         bufferedWriter.appendLine("""        }""")
@@ -167,7 +167,7 @@ fun writeAssignFromDataEmbeddedInsert(processingEnvironment: ProcessingEnvironme
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
     bufferedWriter.appendLine("""        if (data.${getterName}() != null) {""")
     bufferedWriter.appendLine("""            entity.${setterName}(new ${embeddedClassModel.qualifiedName}());""")
-    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtoName}.copy4insert(entityManager, data.${getterName}(), entity.${getterName}());""")
+    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtoName}.copy4insert(entityManager, entity.${getterName}(), data.${getterName}());""")
     bufferedWriter.appendLine("""        }""")
 }
 
@@ -178,7 +178,7 @@ fun writeAssignFromDataEmbeddedUpdate(processingEnvironment: ProcessingEnvironme
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
     bufferedWriter.appendLine("""        if (data.${getterName}() != null) {""")
     bufferedWriter.appendLine("""            entity.${setterName}(new ${embeddedClassModel.qualifiedName}());""")
-    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtoName}.copy4update(entityManager, data.${getterName}(), entity.${getterName}());""")
+    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtoName}.copy4update(entityManager, entity.${getterName}(), data.${getterName}());""")
     bufferedWriter.appendLine("""        }""")
 }
 
