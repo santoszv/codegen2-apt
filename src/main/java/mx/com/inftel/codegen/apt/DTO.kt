@@ -136,11 +136,7 @@ private fun writeAssignFromDataJoinColum(processingEnvironment: ProcessingEnviro
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val joinClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
     val idPropertyModel = joinClassModel.idProperty ?: return
-    val idPropertyType = if (propertyModel.isNullable) {
-        idPropertyModel.propertyType.toNullable()
-    } else {
-        idPropertyModel.propertyType.toNonNullable()
-    }
+    val idPropertyType = idPropertyModel.propertyType.toNullable()
     if (idPropertyType is TypeModel.PrimitiveType) {
         bufferedWriter.appendLine("""        ${joinClassModel.qualifiedName} relation${index} = entityManager.find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
         bufferedWriter.appendLine("""        if (relation${index} == null) {""")
@@ -207,11 +203,7 @@ private fun writeJoinColumnProperty(processingEnvironment: ProcessingEnvironment
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val joinClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
     val idPropertyModel = joinClassModel.idProperty ?: return
-    val idPropertyType = if (propertyModel.isNullable) {
-        idPropertyModel.propertyType.toNullable().toCode()
-    } else {
-        idPropertyModel.propertyType.toNonNullable().toCode()
-    }
+    val idPropertyType = idPropertyModel.propertyType.toNullable().toCode()
     bufferedWriter.appendLine("""""")
     bufferedWriter.appendLine("""    private $idPropertyType ${propertyName}Id;""")
     bufferedWriter.appendLine("""""")
