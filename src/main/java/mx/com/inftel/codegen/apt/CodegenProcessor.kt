@@ -48,12 +48,24 @@ class CodegenProcessor : AbstractProcessor() {
                         writeDTO(processingEnv, writer, classModel)
                     }
                 }
+                if (!generatedClasses.contains(classModel.qualifiedDtiName)) {
+                    generatedClasses.add(classModel.qualifiedDtiName)
+                    processingEnv.filer.createSourceFile(classModel.qualifiedDtiName, annotatedClass).openWriter().buffered().use { writer ->
+                        writeDTI(processingEnv, writer, classModel)
+                    }
+                }
             }
             if (classModel.isEmbeddable && classModel.isTopLevel && classModel.isPublic && !classModel.isAbstract) {
                 if (!generatedClasses.contains(classModel.qualifiedDtoName)) {
                     generatedClasses.add(classModel.qualifiedDtoName)
                     processingEnv.filer.createSourceFile(classModel.qualifiedDtoName, annotatedClass).openWriter().buffered().use { writer ->
                         writeDTO(processingEnv, writer, classModel)
+                    }
+                }
+                if (!generatedClasses.contains(classModel.qualifiedDtiName)) {
+                    generatedClasses.add(classModel.qualifiedDtiName)
+                    processingEnv.filer.createSourceFile(classModel.qualifiedDtiName, annotatedClass).openWriter().buffered().use { writer ->
+                        writeDTI(processingEnv, writer, classModel)
                     }
                 }
             }

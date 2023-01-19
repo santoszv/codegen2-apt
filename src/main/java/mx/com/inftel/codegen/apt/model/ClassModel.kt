@@ -118,6 +118,15 @@ class ClassModel(
         }
     }
 
+    val dtiName: String by lazy {
+        if (codegenAnnotation != null) {
+            val dtiName = processingEnvironment.elementUtils.getElementValuesWithDefaults(codegenAnnotation).filterKeys { it.simpleName.contentEquals("dti") }.values.firstOrNull()?.value as? String ?: ""
+            dtiName.ifBlank { "${simpleName}DTI" }
+        } else {
+            "${simpleName}DTI"
+        }
+    }
+
     val qualifiedCrudName: String by lazy {
         if (packageName.isBlank()) {
             crudName
@@ -131,6 +140,14 @@ class ClassModel(
             dtoName
         } else {
             "${packageName}.${dtoName}"
+        }
+    }
+
+    val qualifiedDtiName: String by lazy {
+        if (packageName.isBlank()) {
+            dtiName
+        } else {
+            "${packageName}.${dtiName}"
         }
     }
 

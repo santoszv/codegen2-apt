@@ -101,24 +101,24 @@ class MethodModel(
 
     val isNullable: Boolean by lazy {
         when {
-            isColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(columnAnnotation!!).filterKeys { it.simpleName.contentEquals("nullable") }.values.first().value as Boolean
-            isJoinColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(joinColumnAnnotation!!).filterKeys { it.simpleName.contentEquals("nullable") }.values.first().value as Boolean
+            isColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(columnAnnotation!!).filterKeys { it.simpleName.contentEquals("nullable") }.values.firstOrNull()?.value as? Boolean ?: false
+            isJoinColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(joinColumnAnnotation!!).filterKeys { it.simpleName.contentEquals("nullable") }.values.firstOrNull()?.value as? Boolean ?: false
             else -> false
         }
     }
 
     val isInsertable: Boolean by lazy {
         when {
-            isColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(columnAnnotation!!).filterKeys { it.simpleName.contentEquals("insertable") }.values.first().value as Boolean
-            isJoinColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(joinColumnAnnotation!!).filterKeys { it.simpleName.contentEquals("insertable") }.values.first().value as Boolean
+            isColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(columnAnnotation!!).filterKeys { it.simpleName.contentEquals("insertable") }.values.firstOrNull()?.value as? Boolean ?: false
+            isJoinColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(joinColumnAnnotation!!).filterKeys { it.simpleName.contentEquals("insertable") }.values.firstOrNull()?.value as? Boolean ?: false
             else -> false
         }
     }
 
     val isUpdatable: Boolean by lazy {
         when {
-            isColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(columnAnnotation!!).filterKeys { it.simpleName.contentEquals("updatable") }.values.first().value as Boolean
-            isJoinColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(joinColumnAnnotation!!).filterKeys { it.simpleName.contentEquals("updatable") }.values.first().value as Boolean
+            isColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(columnAnnotation!!).filterKeys { it.simpleName.contentEquals("updatable") }.values.firstOrNull()?.value as? Boolean ?: false
+            isJoinColumn -> processingEnvironment.elementUtils.getElementValuesWithDefaults(joinColumnAnnotation!!).filterKeys { it.simpleName.contentEquals("updatable") }.values.firstOrNull()?.value as? Boolean ?: false
             else -> false
         }
     }
