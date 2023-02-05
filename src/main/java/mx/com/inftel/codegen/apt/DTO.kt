@@ -30,7 +30,7 @@ fun writeDTO(processingEnvironment: ProcessingEnvironment, bufferedWriter: Buffe
         bufferedWriter.appendLine("package ${classModel.packageName};")
     }
     bufferedWriter.appendLine()
-    bufferedWriter.appendLine("public class ${classModel.dtoName} implements ${classModel.dtiName}, java.io.Serializable {")
+    bufferedWriter.appendLine("public class ${classModel.dtoName} implements ${classModel.dtiName}, java.io.Serializable, java.lang.Cloneable {")
     for (propertyModel in classModel.properties) {
         when {
             propertyModel.isColumn -> writeColumnProperty(bufferedWriter, propertyModel)
@@ -38,7 +38,16 @@ fun writeDTO(processingEnvironment: ProcessingEnvironment, bufferedWriter: Buffe
             propertyModel.isEmbedded -> writeEmbeddedProperty(processingEnvironment, bufferedWriter, propertyModel)
         }
     }
+    writeCloneMethod(bufferedWriter)
     bufferedWriter.appendLine("}")
+}
+
+fun writeCloneMethod(bufferedWriter: BufferedWriter) {
+    bufferedWriter.appendLine("""""")
+    bufferedWriter.appendLine("""    @java.lang.Override""")
+    bufferedWriter.appendLine("""    public Object clone() throws CloneNotSupportedException {""")
+    bufferedWriter.appendLine("""        return super.clone();""")
+    bufferedWriter.appendLine("""    }""")
 }
 
 private fun writeColumnProperty(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
