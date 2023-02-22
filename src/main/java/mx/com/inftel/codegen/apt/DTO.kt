@@ -97,7 +97,7 @@ private fun writeEmbeddedProperty(processingEnvironment: ProcessingEnvironment, 
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    val embeddedClassType = embeddedClassModel.qualifiedDtoName
+    val embeddedClassType = embeddedClassModel.qualifiedDtiName
     bufferedWriter.appendLine("""""")
     bufferedWriter.appendLine("""    private $embeddedClassType ${propertyName};""")
     bufferedWriter.appendLine("""""")

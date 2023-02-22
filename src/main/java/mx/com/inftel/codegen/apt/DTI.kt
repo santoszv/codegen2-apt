@@ -39,9 +39,9 @@ fun writeDTI(processingEnvironment: ProcessingEnvironment, bufferedWriter: Buffe
             propertyModel.isEmbedded -> writeEmbeddedProperty(processingEnvironment, bufferedWriter, propertyModel)
         }
     }
-    writeCopy2Data(processingEnvironment, bufferedWriter, classModel)
-    writeCopy4Insert(processingEnvironment, bufferedWriter, classModel)
-    writeCopy4Update(processingEnvironment, bufferedWriter, classModel)
+    writeCopyAllProperties(processingEnvironment, bufferedWriter, classModel)
+    writeCopyInsertProperties(processingEnvironment, bufferedWriter, classModel)
+    writeCopyUpdateProperties(processingEnvironment, bufferedWriter, classModel)
     writeWrapper(processingEnvironment, bufferedWriter, classModel)
     bufferedWriter.appendLine("}")
 }
@@ -104,7 +104,7 @@ private fun writeEmbeddedDefault(processingEnvironment: ProcessingEnvironment, b
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    val embeddedClassType = embeddedClassModel.qualifiedDtoName
+    val embeddedClassType = embeddedClassModel.qualifiedDtiName
     bufferedWriter.appendLine("""""")
     bufferedWriter.appendLine("""        @java.lang.Override""")
     bufferedWriter.appendLine("""        default $embeddedClassType ${getterName}() {""")
@@ -117,92 +117,130 @@ private fun writeEmbeddedDefault(processingEnvironment: ProcessingEnvironment, b
     bufferedWriter.appendLine("""        }""")
 }
 
-private fun writeCopy2Data(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeCopyAllProperties(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""""")
-    bufferedWriter.appendLine("""    public static void copy2data(${classModel.qualifiedName} entity, ${classModel.qualifiedDtiName} data) {""")
+    bufferedWriter.appendLine("""    public static void copyAllProperties(${classModel.qualifiedDtiName} target, ${classModel.qualifiedName} source) {""")
     for (propertyModel in classModel.properties) {
         when {
-            propertyModel.isColumn -> writeAssignFromEntityColum(bufferedWriter, propertyModel)
-            propertyModel.isJoinColumn -> writeAssignFromEntityJoinColum(processingEnvironment, bufferedWriter, propertyModel)
-            propertyModel.isEmbedded -> writeAssignFromEmbedded(processingEnvironment, bufferedWriter, propertyModel)
+            propertyModel.isColumn -> writeAssignColumFromEntityToDti(bufferedWriter, propertyModel)
+            propertyModel.isJoinColumn -> writeAssignJoinColumFromEntityToDti(processingEnvironment, bufferedWriter, propertyModel)
+            propertyModel.isEmbedded -> writeAssignEmbeddedFromEntityToDti(processingEnvironment, bufferedWriter, propertyModel)
+        }
+    }
+    bufferedWriter.appendLine("""    }""")
+    bufferedWriter.appendLine("""""")
+    bufferedWriter.appendLine("""    public static void copyAllProperties(${classModel.qualifiedDtiName} target, ${classModel.qualifiedDtiName} source) {""")
+    for (propertyModel in classModel.properties) {
+        when {
+            propertyModel.isColumn -> writeAssignColumFromDtiToDti(bufferedWriter, propertyModel)
+            propertyModel.isJoinColumn -> writeAssignJoinColumFromDtiToDti(bufferedWriter, propertyModel)
+            propertyModel.isEmbedded -> writeAssignEmbeddedFromDtiToDti(processingEnvironment, bufferedWriter, propertyModel)
         }
     }
     bufferedWriter.appendLine("""    }""")
 }
 
-private fun writeAssignFromEntityColum(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+private fun writeAssignColumFromEntityToDti(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
-    bufferedWriter.appendLine("""        data.${setterName}(entity.${getterName}());""")
+    bufferedWriter.appendLine("""        target.${setterName}(source.${getterName}());""")
 }
 
-private fun writeAssignFromEntityJoinColum(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+private fun writeAssignJoinColumFromEntityToDti(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val joinClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
     val idPropertyModel = joinClassModel.idProperty ?: return
     val idPropertyGetterName = idPropertyModel.getterName
-    bufferedWriter.appendLine("""        if (entity.${getterName}() != null) {""")
-    bufferedWriter.appendLine("""            data.${setterName}Id(entity.${getterName}().${idPropertyGetterName}());""")
+    bufferedWriter.appendLine("""        if (source.${getterName}() != null) {""")
+    bufferedWriter.appendLine("""            target.${setterName}Id(source.${getterName}().${idPropertyGetterName}());""")
+    bufferedWriter.appendLine("""        } else {""")
+    bufferedWriter.appendLine("""            target.${setterName}Id(null);""")
     bufferedWriter.appendLine("""        }""")
 }
 
-private fun writeAssignFromEmbedded(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+private fun writeAssignEmbeddedFromEntityToDti(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    val embeddedClassType = embeddedClassModel.qualifiedDtoName
-    bufferedWriter.appendLine("""        if (entity.${getterName}() != null) {""")
-    bufferedWriter.appendLine("""            data.${setterName}(new ${embeddedClassType}());""")
-    bufferedWriter.appendLine("""            ${embeddedClassType}.copy2data(entity.${getterName}(), data.${getterName}());""")
+    bufferedWriter.appendLine("""        if (source.${getterName}() != null) {""")
+    bufferedWriter.appendLine("""            target.${setterName}(new ${embeddedClassModel.qualifiedDtoName}());""")
+    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtiName}.copyAllProperties(target.${getterName}(), source.${getterName}());""")
+    bufferedWriter.appendLine("""        } else {""")
+    bufferedWriter.appendLine("""            target.${setterName}(null);""")
     bufferedWriter.appendLine("""        }""")
 }
 
-private fun writeCopy4Insert(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeAssignColumFromDtiToDti(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+    val getterName = propertyModel.getterName
+    val setterName = propertyModel.setterName
+    bufferedWriter.appendLine("""        target.${setterName}(source.${getterName}());""")
+}
+
+private fun writeAssignJoinColumFromDtiToDti(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+    val getterName = propertyModel.getterName
+    val setterName = propertyModel.setterName
+    bufferedWriter.appendLine("""        target.${setterName}Id(source.${getterName}Id());""")
+}
+
+private fun writeAssignEmbeddedFromDtiToDti(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+    val getterName = propertyModel.getterName
+    val setterName = propertyModel.setterName
+    val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
+    val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
+    bufferedWriter.appendLine("""        if (source.${getterName}() != null) {""")
+    bufferedWriter.appendLine("""            target.${setterName}(new ${embeddedClassModel.qualifiedDtoName}());""")
+    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtiName}.copyAllProperties(target.${getterName}(), source.${getterName}());""")
+    bufferedWriter.appendLine("""        } else {""")
+    bufferedWriter.appendLine("""            target.${setterName}(null);""")
+    bufferedWriter.appendLine("""        }""")
+}
+
+private fun writeCopyInsertProperties(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""""")
-    bufferedWriter.appendLine("""    public static void copy4insert(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedName} entity, ${classModel.qualifiedDtiName} data) {""")
+    bufferedWriter.appendLine("""    public static void copyInsertProperties(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedName} target, ${classModel.qualifiedDtiName} source) {""")
     for ((index, propertyModel) in classModel.properties.withIndex()) {
         val isInsertable = propertyModel.isInsertable
         val isManaged = propertyModel.isGeneratedValue || propertyModel.isVersion
         if (isInsertable && !isManaged) {
             when {
-                propertyModel.isColumn -> writeAssignFromDataColum(bufferedWriter, propertyModel)
-                propertyModel.isJoinColumn -> writeAssignFromDataJoinColum(processingEnvironment, bufferedWriter, index, propertyModel)
+                propertyModel.isColumn -> writeAssignColumFromDtiToEntity(bufferedWriter, propertyModel)
+                propertyModel.isJoinColumn -> writeAssignJoinColumFromDtiFromEntity(processingEnvironment, bufferedWriter, index, propertyModel)
             }
         } else if (propertyModel.isEmbedded) {
-            writeAssignFromDataEmbeddedInsert(processingEnvironment, bufferedWriter, propertyModel)
+            writeAssignEmbeddedFromDtiToEntityInsert(processingEnvironment, bufferedWriter, propertyModel)
         }
     }
     bufferedWriter.appendLine("""    }""")
 }
 
-private fun writeCopy4Update(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
+private fun writeCopyUpdateProperties(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, classModel: ClassModel) {
     bufferedWriter.appendLine("""""")
-    bufferedWriter.appendLine("""    public static void copy4update(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedName} entity, ${classModel.qualifiedDtiName} data) {""")
+    bufferedWriter.appendLine("""    public static void copyUpdateProperties(jakarta.persistence.EntityManager entityManager, ${classModel.qualifiedName} target, ${classModel.qualifiedDtiName} source) {""")
     for ((index, propertyModel) in classModel.properties.withIndex()) {
         val isUpdatable = propertyModel.isUpdatable
         val isManaged = propertyModel.isGeneratedValue || propertyModel.isVersion
         if (isUpdatable && !isManaged) {
             when {
-                propertyModel.isColumn -> writeAssignFromDataColum(bufferedWriter, propertyModel)
-                propertyModel.isJoinColumn -> writeAssignFromDataJoinColum(processingEnvironment, bufferedWriter, index, propertyModel)
+                propertyModel.isColumn -> writeAssignColumFromDtiToEntity(bufferedWriter, propertyModel)
+                propertyModel.isJoinColumn -> writeAssignJoinColumFromDtiFromEntity(processingEnvironment, bufferedWriter, index, propertyModel)
             }
         } else if (propertyModel.isEmbedded) {
-            writeAssignFromDataEmbeddedUpdate(processingEnvironment, bufferedWriter, propertyModel)
+            writeAssignEmbeddedFromDtiToEntityUpdate(processingEnvironment, bufferedWriter, propertyModel)
         }
     }
     bufferedWriter.appendLine("""    }""")
 }
 
-private fun writeAssignFromDataColum(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+private fun writeAssignColumFromDtiToEntity(bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
-    bufferedWriter.appendLine("""        entity.${setterName}(data.${getterName}());""")
+    bufferedWriter.appendLine("""        target.${setterName}(source.${getterName}());""")
 }
 
-private fun writeAssignFromDataJoinColum(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, index: Int, propertyModel: PropertyModel) {
+private fun writeAssignJoinColumFromDtiFromEntity(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, index: Int, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
@@ -210,43 +248,47 @@ private fun writeAssignFromDataJoinColum(processingEnvironment: ProcessingEnviro
     val idPropertyModel = joinClassModel.idProperty ?: return
     val idPropertyType = idPropertyModel.propertyType.toNullable()
     if (idPropertyType is TypeModel.PrimitiveType) {
-        bufferedWriter.appendLine("""        ${joinClassModel.qualifiedName} relation${index} = entityManager.find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
+        bufferedWriter.appendLine("""        ${joinClassModel.qualifiedName} relation${index} = entityManager.find(${joinClassModel.qualifiedName}.class, source.${getterName}Id());""")
         bufferedWriter.appendLine("""        if (relation${index} == null) {""")
         bufferedWriter.appendLine("""            throw new IllegalArgumentException("Relation Not Found");""")
         bufferedWriter.appendLine("""        }""")
-        bufferedWriter.appendLine("""        entity.${setterName}(relation${index});""")
+        bufferedWriter.appendLine("""        target.${setterName}(relation${index});""")
     } else {
-        bufferedWriter.appendLine("""        if (data.${getterName}Id() != null) {""")
-        bufferedWriter.appendLine("""            ${joinClassModel.qualifiedName} relation${index} = entityManager.find(${joinClassModel.qualifiedName}.class, data.${getterName}Id());""")
+        bufferedWriter.appendLine("""        if (source.${getterName}Id() != null) {""")
+        bufferedWriter.appendLine("""            ${joinClassModel.qualifiedName} relation${index} = entityManager.find(${joinClassModel.qualifiedName}.class, source.${getterName}Id());""")
         bufferedWriter.appendLine("""            if (relation${index} == null) {""")
         bufferedWriter.appendLine("""                throw new IllegalArgumentException("Relation Not Found");""")
         bufferedWriter.appendLine("""            }""")
-        bufferedWriter.appendLine("""            entity.${setterName}(relation${index});""")
+        bufferedWriter.appendLine("""            target.${setterName}(relation${index});""")
         bufferedWriter.appendLine("""        } else {""")
-        bufferedWriter.appendLine("""            entity.${setterName}(null);""")
+        bufferedWriter.appendLine("""            target.${setterName}(null);""")
         bufferedWriter.appendLine("""        }""")
     }
 }
 
-private fun writeAssignFromDataEmbeddedInsert(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+private fun writeAssignEmbeddedFromDtiToEntityInsert(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    bufferedWriter.appendLine("""        if (data.${getterName}() != null) {""")
-    bufferedWriter.appendLine("""            entity.${setterName}(new ${embeddedClassModel.qualifiedName}());""")
-    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtoName}.copy4insert(entityManager, entity.${getterName}(), data.${getterName}());""")
+    bufferedWriter.appendLine("""        if (source.${getterName}() != null) {""")
+    bufferedWriter.appendLine("""            target.${setterName}(new ${embeddedClassModel.qualifiedName}());""")
+    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtiName}.copyInsertProperties(entityManager, target.${getterName}(), source.${getterName}());""")
+    bufferedWriter.appendLine("""        } else {""")
+    bufferedWriter.appendLine("""            target.${setterName}(null);""")
     bufferedWriter.appendLine("""        }""")
 }
 
-private fun writeAssignFromDataEmbeddedUpdate(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
+private fun writeAssignEmbeddedFromDtiToEntityUpdate(processingEnvironment: ProcessingEnvironment, bufferedWriter: BufferedWriter, propertyModel: PropertyModel) {
     val getterName = propertyModel.getterName
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    bufferedWriter.appendLine("""        if (data.${getterName}() != null) {""")
-    bufferedWriter.appendLine("""            entity.${setterName}(new ${embeddedClassModel.qualifiedName}());""")
-    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtoName}.copy4update(entityManager, entity.${getterName}(), data.${getterName}());""")
+    bufferedWriter.appendLine("""        if (source.${getterName}() != null) {""")
+    bufferedWriter.appendLine("""            target.${setterName}(new ${embeddedClassModel.qualifiedName}());""")
+    bufferedWriter.appendLine("""            ${embeddedClassModel.qualifiedDtiName}.copyUpdateProperties(entityManager, target.${getterName}(), source.${getterName}());""")
+    bufferedWriter.appendLine("""        } else {""")
+    bufferedWriter.appendLine("""            target.${setterName}(null);""")
     bufferedWriter.appendLine("""        }""")
 }
 
@@ -283,7 +325,7 @@ private fun writeEmbeddedProperty(processingEnvironment: ProcessingEnvironment, 
     val setterName = propertyModel.setterName
     val propertyType = propertyModel.propertyType as? TypeModel.ReferenceType.Class ?: return
     val embeddedClassModel = ClassModel(processingEnvironment, propertyType.declaredType.asElement() as TypeElement)
-    val embeddedClassType = embeddedClassModel.qualifiedDtoName
+    val embeddedClassType = embeddedClassModel.qualifiedDtiName
     bufferedWriter.appendLine("""""")
     writeValidations(bufferedWriter, propertyModel.validations)
     bufferedWriter.appendLine("""    public $embeddedClassType ${getterName}();""")

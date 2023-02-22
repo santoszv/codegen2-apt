@@ -23,6 +23,7 @@ import javax.annotation.processing.SupportedAnnotationTypes
 import javax.annotation.processing.SupportedSourceVersion
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.TypeElement
+import javax.tools.Diagnostic
 
 @SupportedAnnotationTypes("mx.com.inftel.codegen.Codegen")
 @SupportedSourceVersion(SourceVersion.RELEASE_11)
@@ -41,18 +42,24 @@ class CodegenProcessor : AbstractProcessor() {
                     processingEnv.filer.createSourceFile(classModel.qualifiedCrudName, annotatedClass).openWriter().buffered().use { writer ->
                         writeCRUD(writer, classModel)
                     }
+                } else {
+                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated CRUD: ${classModel.qualifiedCrudName}")
                 }
                 if (!generatedClasses.contains(classModel.qualifiedDtoName)) {
                     generatedClasses.add(classModel.qualifiedDtoName)
                     processingEnv.filer.createSourceFile(classModel.qualifiedDtoName, annotatedClass).openWriter().buffered().use { writer ->
                         writeDTO(processingEnv, writer, classModel)
                     }
+                } else {
+                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated DTO: ${classModel.qualifiedDtoName}")
                 }
                 if (!generatedClasses.contains(classModel.qualifiedDtiName)) {
                     generatedClasses.add(classModel.qualifiedDtiName)
                     processingEnv.filer.createSourceFile(classModel.qualifiedDtiName, annotatedClass).openWriter().buffered().use { writer ->
                         writeDTI(processingEnv, writer, classModel)
                     }
+                } else {
+                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated DTI: ${classModel.qualifiedDtiName}")
                 }
             }
             if (classModel.isEmbeddable && classModel.isTopLevel && classModel.isPublic && !classModel.isAbstract) {
@@ -61,12 +68,16 @@ class CodegenProcessor : AbstractProcessor() {
                     processingEnv.filer.createSourceFile(classModel.qualifiedDtoName, annotatedClass).openWriter().buffered().use { writer ->
                         writeDTO(processingEnv, writer, classModel)
                     }
+                } else {
+                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated DTO: ${classModel.qualifiedDtoName}")
                 }
                 if (!generatedClasses.contains(classModel.qualifiedDtiName)) {
                     generatedClasses.add(classModel.qualifiedDtiName)
                     processingEnv.filer.createSourceFile(classModel.qualifiedDtiName, annotatedClass).openWriter().buffered().use { writer ->
                         writeDTI(processingEnv, writer, classModel)
                     }
+                } else {
+                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated DTI: ${classModel.qualifiedDtiName}")
                 }
             }
         }
