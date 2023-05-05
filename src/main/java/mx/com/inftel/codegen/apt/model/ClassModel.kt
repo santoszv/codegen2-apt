@@ -127,6 +127,15 @@ class ClassModel(
         }
     }
 
+    val methodsSuffix: String by lazy {
+        if (codegenAnnotation != null) {
+            val methodsSuffix = processingEnvironment.elementUtils.getElementValuesWithDefaults(codegenAnnotation).filterKeys { it.simpleName.contentEquals("methods") }.values.firstOrNull()?.value as? String ?: ""
+            methodsSuffix.ifBlank { capitalizedName }
+        } else {
+            capitalizedName
+        }
+    }
+
     val qualifiedCrudName: String by lazy {
         if (packageName.isBlank()) {
             crudName
